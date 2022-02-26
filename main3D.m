@@ -61,7 +61,7 @@ constitutive_laws{2} = @(F) neo_hookean(F, mu_(2), beta_(2), IND_K4);
 constitutive_laws{3} = @(F) saint_venant(F, lambda_(3), mu_(3), IND_K4);
 %% PRE-PROCESSING
 max_iter = 20;      TOL = 1e-8;             % parameters for stopping Newton-Raphson (NR) i teration
-max_iter_CG = 20;    TOL_CG = 1e-6;         % parameters for stopping the CG solver for NR each iteration
+max_iter_CG = 20;   TOL_CG = 1e-6;          % parameters for stopping the CG solver for NR each iteration
 num_phases = length(constitutive_laws);     % number of phases
 phase = cell(1, num_phases);                % cell of variables keeping boolean values for each material phase
 for p = 1:num_phases, phase{p} = (phase_IND == p); end      % phase{p}(i,j,k) = 1 if X(i,j,k) belongs to the p-th phase
