@@ -42,7 +42,7 @@ end
 x = zeros([n, ndim]); xi = zeros([n, ndim]);                                    % three-dimensional coordinates (x)
 [x(:,:,:,1), x(:,:,:,2), x(:,:,:,3)] = ndgrid(x1D{1}, x1D{2}, x1D{3});          % and three-dimensional Fourier frequencies (xi)
 [xi(:,:,:,1), xi(:,:,:,2), xi(:,:,:,3)] = ndgrid(xi1D{1}, xi1D{2}, xi1D{3});	
-phase_IND = ones(n(1), n(2), n(3));                                     % matrix phase is indicated by integer 1
+phase_IND = ones(n);                                     % matrix phase is indicated by integer 1
 phase_IND( (x(:,:,:, 1) <= 0.75*L(1) & x(:,:,:, 1) >= -0.75*L(1)) ...   % rectangular inclusions are indicated by integer 2
     & ( x(:,:,:, 2) <=  0.75*L(2) & x(:,:,:, 2) >= -0.75*L(2)) ...
     & ((x(:,:,:, 3) <= -0.50*L(3) & x(:,:,:, 3) >= -0.75*L(3)) ...
@@ -60,7 +60,7 @@ constitutive_laws{1} = @(F) neo_hookean(F, mu_(1), beta_(1), IND_K4);
 constitutive_laws{2} = @(F) neo_hookean(F, mu_(2), beta_(2), IND_K4);
 constitutive_laws{3} = @(F) saint_venant(F, lambda_(3), mu_(3), IND_K4);
 %% PRE-PROCESSING
-max_iter = 20;      TOL = 1e-8;             % parameters for stopping Newton-Raphson (NR) iteration
+max_iter = 20;      TOL = 1e-8;             % parameters for stopping Newton-Raphson (NR) i teration
 max_iter_CG = 20;    TOL_CG = 1e-6;         % parameters for stopping the CG solver for NR each iteration
 num_phases = length(constitutive_laws);     % number of phases
 phase = cell(1, num_phases);                % cell of variables keeping boolean values for each material phase
@@ -78,8 +78,8 @@ for iter = 1:max_iter
     for p = 1 : num_phases
         [P(phase{p},:,:), K4(phase{p},:)] = constitutive_laws{p}(F(phase{p},:,:));
     end
-    PP = reshape(P, n(1), n(2), n(3), ndim, ndim);
-    KK4 = reshape(K4, n(1), n(2), n(3), ndim*ndim*(ndim*ndim+1)/2);
+    PP = reshape(P, [n, ndim, ndim]);
+    KK4 = reshape(K4, [n, ndim*ndim*(ndim*ndim+1)/2]);
     lhs = @(dF) stiff_func3D(dF, KK4, Green, IND);          % left-hand side
     rhs = residual_func3D(PP, Green);                       % right-hand side
     [dF, FLAG] = pcg(lhs, rhs, TOL_CG, max_iter);           % other possibilities: pcg, bicgstab, bicgstabl, cgs
@@ -95,13 +95,13 @@ S = zeros(n_nodes, ndim, ndim, ndim, ndim);  % gpuArray     % fluctuation sensit
 for p = 1 : num_phases
     [P(phase{p},:,:), K4(phase{p}, :)] = constitutive_laws{p}(F(phase{p},:,:));
 end
-KK4 = reshape(K4, n(1), n(2), n(3), ndim*ndim*(ndim*ndim+1)/2);  % gpuArray
+KK4 = reshape(K4, [n, ndim*ndim*(ndim*ndim+1)/2]);  % gpuArray
 for i = 1:length(IND)
     lhs = @(SVect) stiff_func3D(SVect, KK4, Green, IND);
-    T = reshape(KK4(:,:,:,IND(i,:)), n(1), n(2), n(3), ndim, ndim);
+    T = reshape(KK4(:,:,:,IND(i,:)), [n, ndim, ndim]);
     rhs = residual_func3D(T, Green);
     [SVect, ~] = pcg(lhs, rhs, 1e-10, 50);
-    S(:,:,:,I(i),J(i)) = reshape(SVect, n_nodes, ndim, ndim);
+    S(:,:,:,I(i),J(i)) = reshape(SVect, [n_nodes, ndim, ndim]);
 end
 K4_Macro = zeros(1, length(IND_K4));
 for i = 1:length(IND_K4)
@@ -122,11 +122,11 @@ end
 v = v(:);       % roll tensor into column vector
 end
 function v = stiff_func3D(dF_vector, K4, G, IND) % Define linear function AFUN for the CG solver
-[nx, ny, nz, ~] = size(G);  ndim = 3;
-dF = reshape(dF_vector, nx, ny, nz, ndim, ndim);    % unroll vector into tensor-matrix
-dK = zeros(nx, ny, nz, ndim, ndim);  % gpuArray     % tangent increment
+n = zeros(1,3); [n(1), n(2), n(3), ~] = size(G); ndim = 3;
+dF = reshape(dF_vector, [n, ndim, ndim]);    % unroll vector into tensor-matrix
+dK = zeros([n, ndim, ndim]);  % gpuArray     % tangent increment
 for i = 1:length(IND), dK(:,:,:,i) = fftn( sum(K4(:,:,:, IND(i,:)) .* dF(:,:,:, :), 4)); end
-v = zeros(nx, ny, nz, ndim, ndim);   % gpuArray
+v = zeros([n, ndim, ndim]);   % gpuArray
 for i = 1:ndim
     v(:,:,:,i,1) = ifftn( sum(squeeze(dK(:,:,:,i,:)).*G(:,:,:,[1, 2, 3]), 4) );
     v(:,:,:,i,2) = ifftn( sum(squeeze(dK(:,:,:,i,:)).*G(:,:,:,[2, 4, 5]), 4) );
