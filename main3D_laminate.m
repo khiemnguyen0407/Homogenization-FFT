@@ -73,6 +73,7 @@ end
 %% DISPLAY DEFORMATION GRADIENT
 F = reshape(F, n(1), n(2), n(3), ndim, ndim);
 format longg
+fprintf('Numerical solution \n=============================\n')
 disp('F[1] = ');
 disp(squeeze(F(fix(n(1)/6), 1, 1, :,:)))
 disp('F[2] = ');
@@ -80,6 +81,15 @@ disp(squeeze(F(fix(n(1)/6)+n(1)/3, 1, 1, :,:)))
 disp('F[3] = ');
 disp(squeeze(F(fix(n(1)/6)+2*n(1)/3, 1, 1, :,:)))
 F = reshape(F, n_nodes, ndim, ndim);
+
+F_analytical = readmatrix('deformationGradient.csv');
+fprintf('Exact solution \n=============================\n')
+disp('Fexact_{i1} = ');
+disp(F_analytical(:,1))
+disp('Fexact_{i2} = ');
+disp(F_analytical(:,2))
+disp('Fexact_{i3} = ');
+disp(F_analytical(:,3))
 
 %% MACROSCOPIC ELASTIC TANGENT
 S = zeros(n_nodes, ndim, ndim, ndim, ndim);
@@ -120,7 +130,7 @@ ax = gca; ax.FontSize = 11; fs = 14;
 xlabel('$X_1$', 'Interpreter', 'latex', 'FontSize', fs);
 ylabel('$X_2$', 'Interpreter', 'latex', 'FontSize', fs);
 zlabel('$X_3$', 'Interpreter', 'latex', 'FontSize', fs);
-if ~exist('figures', 'dir'), mkdir('./figures'); end
+if exist('./figures', 'dir') ~= 7, mkdir 'figures'; end
 exportgraphics(gcf, './figures/RVE_3D_laminate.eps', 'ContentType', 'image');
 
 %% ACCURACY PLOT FOR THE 3-PHASE LAMINATED MICROSTRUCTURE
@@ -147,6 +157,7 @@ y_frame = max(F_diff) - min(F_diff);
 ylim([min(F_diff) - 0.1 * y_frame, max(F_diff) + 0.1*y_frame])
 legend('$F_{11}$', '$F_{21}$', '$F_{31}$', 'Interpreter', 'latex', ...
     'FontSize', 10, 'Location', 'north', 'box', 'off')
+if exist('./figures', 'dir') ~= 7, mkdir 'figures'; end
 exportgraphics(gcf, './figures/three_phase_solution_accuracy.eps', 'ContentType', 'image');
 
 % For the solution of elastic moduli
@@ -161,7 +172,7 @@ xlabel('$K_{\mathrm{IND}}$', 'Interpreter', 'latex', 'FontSize', fs);
 ylabel('$\big(K_\mathrm{IND}^\mathrm{num} - K_\mathrm{IND}^\mathrm{ref}\big)/K_\mathrm{IND}^\mathrm{ref} (\%)$', ...
     'Interpreter', 'latex', 'FontSize', fs)
 xlim([0, 46])
-if ~exist('figures', 'dir'), mkdir 'figures'; end
+if exist('./figures', 'dir') ~= 7, mkdir 'figures'; end
 exportgraphics(gcf, './figures/tangent_moduli_comparison.eps', 'ContentType', 'image');
 
 %% HELPER FUNCTIONS
