@@ -53,7 +53,7 @@ F = permute(repmat(F_Macro, 1, 1, n_nodes), [3, 1, 2]);  % initialize gradient d
 P = zeros(n_nodes,ndim,ndim);                            % 1st Piola-Kirchhoff stress
 T = zeros(n_nodes,ndim*ndim*(ndim*ndim+1)/2);            % tangent moduli
 
-tstart = tic;
+tic
 for iter = 1:max_iter
     t = tic;
     for p = 1 : num_phases
@@ -67,13 +67,13 @@ for iter = 1:max_iter
 
     F = F + reshape(dF, n_nodes, ndim, ndim);   % update gradient field
     residual = norm(rhs, 2) / nDoFs_sqrt;            % residual error
-    fprintf('iteration = %d: residual = %6.5e\n', iter, residual);
+    fprintf('residual = %6.5e\n', residual);
     if residual < TOL
+        fprintf('Step = %d -- Residual = %6.5e\n', iter, residual);
         break;
     end
 end
-telapsed = toc(tstart);
-fprintf('time = %16.14f\n', telapsed)
+toc
 
 %% COMPUTE THE MACROSCOPIC ENERGY
 E = zeros(n_nodes, ndim, ndim);

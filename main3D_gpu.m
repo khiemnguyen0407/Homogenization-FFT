@@ -42,14 +42,14 @@ end
 x = zeros([n, ndim]); xi = zeros([n, ndim]);                                    % three-dimensional coordinates (x)
 [x(:,:,:,1), x(:,:,:,2), x(:,:,:,3)] = ndgrid(x1D{1}, x1D{2}, x1D{3});          % and three-dimensional Fourier frequencies (xi)
 [xi(:,:,:,1), xi(:,:,:,2), xi(:,:,:,3)] = ndgrid(xi1D{1}, xi1D{2}, xi1D{3});	
-phase_IND = ones(n);                                     % matrix phase is indicated by integer 1
+phase_IND = ones(n);                                    % matrix phase is indicated by integer 1
 phase_IND( (x(:,:,:, 1) <= 0.75*L(1) & x(:,:,:, 1) >= -0.75*L(1)) ...   % rectangular inclusions are indicated by integer 2
     & ( x(:,:,:, 2) <=  0.75*L(2) & x(:,:,:, 2) >= -0.75*L(2)) ...
     & ((x(:,:,:, 3) <= -0.50*L(3) & x(:,:,:, 3) >= -0.75*L(3)) ...
     |  (x(:,:,:, 3) <=  0.75*L(3) & x(:,:,:, 3) >=  0.5*L(3))) ) = 2;
-vol_frac = 0.025;                                                       % volume fraction
-radius = (6 * vol_frac * prod(L) / pi)^(1/3);                           % RVE volume = 8*L(1)*L(2)*L(3)
-phase_IND(sum(x.^2, ndim + 1) <= radius*radius) = 3;                    % circular inclusion is indicated by integer 3
+vol_frac = 0.025;                                       % volume fraction
+radius = (6 * vol_frac * prod(L) / pi)^(1/3);           % RVE volume = 8*L(1)*L(2)*L(3)
+phase_IND(sum(x.^2, ndim + 1) <= radius*radius) = 3;    % circular inclusion is indicated by integer 3
 %% MATERIAL LAWS
 nu = [0.33, 0.30, 0.34];                % Poisson ratios for two material phases
 E = [69, 5*69, 20*69];                  % Young moduli for two material phases
@@ -82,10 +82,10 @@ for iter = 1:max_iter
     for p = 1 : num_phases
         [P(phase{p},:,:), K4(phase{p},:)] = constitutive_laws{p}(F(phase{p},:,:));
     end
-    PP = reshape(P, [n, ndim, ndim]);
-    KK4 = reshape(K4, [n, ndim*ndim*(ndim*ndim+1)/2]);
-    lhs = @(dF) stiff_func3D(dF, KK4, Green, IND);          % left-hand side
-    rhs = residual_func3D(PP, Green);                       % right-hand side
+    P_grid = reshape(P, [n, ndim, ndim]);
+    K4_grid = reshape(K4, [n, ndim*ndim*(ndim*ndim+1)/2]);
+    lhs = @(dF) stiff_func3D(dF, K4_grid, Green, IND);          % left-hand side
+    rhs = residual_func3D(P_grid, Green);                       % right-hand side
     [dF, FLAG] = pcg(lhs, rhs, TOL_CG, max_iter);           % other possibilities: pcg, bicgstab, bicgstabl, cgs
     if dF == 0
         fprintf('Step = %d -- Update vanishes\n', iter); 
@@ -106,10 +106,10 @@ S = gpuArray(zeros(n_nodes, ndim, ndim, ndim, ndim));       % fluctuation sensit
 for p = 1 : num_phases
     [P(phase{p},:,:), K4(phase{p}, :)] = constitutive_laws{p}(F(phase{p},:,:));
 end
-KK4 = gpuArray(reshape(K4, [n, ndim*ndim*(ndim*ndim+1)/2]));
+K4_grid = gpuArray(reshape(K4, [n, ndim*ndim*(ndim*ndim+1)/2]));
 for i = 1:length(IND)
-    lhs = @(SVect) stiff_func3D(SVect, KK4, Green, IND);
-    T = reshape(KK4(:,:,:,IND(i,:)), [n, ndim, ndim]);
+    lhs = @(SVect) stiff_func3D(SVect, K4_grid, Green, IND);
+    T = reshape(K4_grid(:,:,:,IND(i,:)), [n, ndim, ndim]);
     rhs = residual_func3D(T, Green);
     [SVect, ~] = pcg(lhs, rhs, 1e-10, 50);
     S(:,:,:,I(i),J(i)) = reshape(SVect, n_nodes, ndim, ndim);

@@ -1,4 +1,4 @@
-%% REGULAR MESH
+clc%% REGULAR MESH
 close all; run indexing.m
 ndim = 3; L = ones(1,ndim); n = [3*3, 3, 3]; scale = L./pi;
 h = prod(2*L./n); vol = prod(2*L);  x1D = cell(1,ndim); xi1D = cell(1,ndim);
@@ -70,32 +70,6 @@ for iter = 1:max_iter
     end
 end
 
-%% RECOVER THE DISPLACEMENT FIELD
-H = zeros(size(F));
-H(:,[1, 5, 9]) = F(:,[1, 5, 9]) - 1;
-H = reshape(H, [n, ndim, ndim]);
-H_fourier = zeros(size(H));
-for i = 1 : ndim
-    for j = 1:ndim
-        H_fourier(:,:,:,i,j) = fftn(squeeze(H(:,:,:,i,j)));
-    end
-end
-u = zeros(n(1), n(2), n(3), ndim);
-varphi = zeros(size(u));
-xi_squared = sum(xi .* xi, ndim + 1);
-scaling = 10;
-for i = 1:ndim
-    A = H_fourier(:,:,:,i,1) .* xi(:,:,:,1) + H_fourier(:,:,:,i,2) .* xi(:,:,:,2) ...
-        + H_fourier(:,:,:,i,3) .* xi(:,:,:,3);
-    B = 1i * A ./ xi_squared;
-    B(xi_squared == 0) = 0;
-    u(:,:,:,i) = -ifftn(B);
-    varphi(:,:,:,i) = x(:,:,:,i) + scaling * u(:,:,:,i);
-end
-
-varphi_columns = reshape(varphi, [], 3);
-scatter3(varphi_columns(:,1), varphi_columns(:,2), varphi_columns(:,3), 'Marker', '*');
-
 %% DISPLAY DEFORMATION GRADIENT
 F = reshape(F, n(1), n(2), n(3), ndim, ndim);
 format longg
@@ -128,36 +102,29 @@ for i = 1:length(IND_K4)
     K4_Macro(i) = h*(sum(K4(:,i)) + sum(K4(:,IND(idx,:)) .* SS(:,:), 'all')) / vol;
 end
 
-%% FIGURE
-close all
+%% FIGURE: LAMINATE RVE
 figure('Position', 0.6*get(0, 'DefaultFigurePosition'))
 inv_transparent = 0.6;
 plotcube([2/3, 2, 2], -1*ones(1,3), inv_transparent, [0.5, 0, 0]);
 plotcube([2/3, 2, 2], [-1 + 2/3, -1, -1], inv_transparent, [0, 0.5, 0]);
 plotcube([2/3, 2, 2], [-1 + 4/3, -1, -1], inv_transparent, [0, 0, 0.5]);
-X = [-1, 1; -1 1; -1 1; -1 1; ...
-    -1 -1; -1 -1; -1 -1; -1 -1;
-    1 1; 1 1; 1 1; 1 1]';
-Y = [-1, -1; 1 1; -1 -1; 1 1; ...
-    -1 -1; 1 1; -1 1; -1 1;
-    -1 -1; 1 1; -1 1; -1 1]';
-Z = [-1, -1; 1 1; 1 1; -1 -1; ...
-    -1 1; -1 1; -1 -1; 1 1;
-    -1 1; -1 1; -1 -1; 1 1]';
+X = [-1, 1; -1 1; -1 1;  -1 1; -1 -1; -1 -1; -1 -1; -1 -1;  1 1; 1 1; 1 1; 1 1]';
+Y = [-1, -1; 1 1; -1 -1; 1 1;   -1 -1; 1 1; -1 1; -1 1;  -1 -1; 1 1; -1 1; -1 1]';
+Z = [-1, -1; 1 1; 1 1; -1 -1;   -1 1; -1 1; -1 -1; 1 1;  -1 1; -1 1; -1 -1; 1 1]';
 line(X, Y, Z, 'LineWidth', 2, 'Color', 'k');
 axis square
 
 s = 1.2;
 axis(reshape(repmat([-s, s], 3, 1)', 1, []))
-fs = 14;
-ax = gca; ax.FontSize = 11;
+ax = gca; ax.FontSize = 11; fs = 14;
 xlabel('$X_1$', 'Interpreter', 'latex', 'FontSize', fs);
 ylabel('$X_2$', 'Interpreter', 'latex', 'FontSize', fs);
 zlabel('$X_3$', 'Interpreter', 'latex', 'FontSize', fs);
+if ~exist('figures', 'dir'), mkdir('./figures'); end
 exportgraphics(gcf, './figures/RVE_3D_laminate.eps', 'ContentType', 'image');
 
 %% ACCURACY PLOT FOR THE 3-PHASE LAMINATED MICROSTRUCTURE
-close all
+% For the solution of deformation gradient
 figure('Position', 0.6*get(0, 'DefaultFigurePosition'))
 F_analytical = readmatrix('deformationGradient.csv');
 F = reshape(F, [n, ndim, ndim]);
@@ -170,8 +137,7 @@ F3_diff = F_analytical(:,3) - F3;
 F_diff = vertcat(F1_diff(:), F2_diff(:), F3_diff(:));
 plot(1:3, F1_diff, '-o', 1:3, F2_diff, '-o', 1:3, F3_diff, '-o', 'LineWidth', 1.2), grid on
 xticks(1:3)
-fs = 13;
-ax = gca;
+ax = gca; fs = 13;
 ax.TickLabelInterpreter = 'latex';
 xticklabels({'$p = 1$', '$p = 2$', '$p = 3$'})
 xlabel('$F_{i1}^{(p)}$', 'Interpreter', 'latex', 'FontSize', fs);
@@ -183,6 +149,7 @@ legend('$F_{11}$', '$F_{21}$', '$F_{31}$', 'Interpreter', 'latex', ...
     'FontSize', 10, 'Location', 'north', 'box', 'off')
 exportgraphics(gcf, './figures/three_phase_solution_accuracy.eps', 'ContentType', 'image');
 
+% For the solution of elastic moduli
 figure('Position', 0.6*get(0, 'DefaultFigurePosition'))
 K4 = readmatrix('ElasticModuli.csv');
 K4_numerical = reshape(K4_Macro, [], 1);
@@ -194,7 +161,7 @@ xlabel('$K_{\mathrm{IND}}$', 'Interpreter', 'latex', 'FontSize', fs);
 ylabel('$\big(K_\mathrm{IND}^\mathrm{num} - K_\mathrm{IND}^\mathrm{ref}\big)/K_\mathrm{IND}^\mathrm{ref} (\%)$', ...
     'Interpreter', 'latex', 'FontSize', fs)
 xlim([0, 46])
-saveas(gcf, './figures/tangent_moduli_comparison', 'svg');
+if ~exist('figures', 'dir'), mkdir 'figures'; end
 exportgraphics(gcf, './figures/tangent_moduli_comparison.eps', 'ContentType', 'image');
 
 %% HELPER FUNCTIONS
