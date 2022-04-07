@@ -1,3 +1,32 @@
+%% REGULAR MESH
+ndim = 3;                       % problem dimension
+L = ones(1,ndim);               % RVE occupies the domain [-L(1), L(1)] x [-L(2), L(2)] x [-L(3), L(3)]
+n = repmat(64, [1, ndim]);      % number of nodes per each direction
+h = prod(2*L./n);               % volume of one element boxing the grid point
+vol = prod(2*L);                % volume of the RVE
+scale = L./pi;                  % for scaling the wave frequencies
+x1D = cell(1,ndim);     % one-dimensional coordinates in each direction
+xi1D = cell(1,ndim);    % one-dimensional Fourier frequencies in each direction
+for a = 1:ndim
+    if rem(n(a),2) == 1
+        x1D{a} = scale(a) * (2*pi/n(a)) * (-fix(n(a)/2) : fix(n(a)/2));
+        xi1D{a} = [0 : fix(n(a)/2), -fix(n(a)/2) : -1] / scale(a);
+    else
+        x1D{a} = scale(a) * (2*pi/n(a)) * (-fix(n(a)/2) : fix(n(a)/2)-1);
+        xi1D{a} = [0: fix(n(a)/2)-1, 0, -fix(n(a)/2)+1 : -1] / scale(a);
+    end
+end
+x = zeros([n, ndim]); xi = zeros([n, ndim]);                                    % three-dimensional coordinates (x)
+[x(:,:,:,1), x(:,:,:,2), x(:,:,:,3)] = ndgrid(x1D{1}, x1D{2}, x1D{3});          % and three-dimensional Fourier frequencies (xi)
+[xi(:,:,:,1), xi(:,:,:,2), xi(:,:,:,3)] = ndgrid(xi1D{1}, xi1D{2}, xi1D{3});	
+phase_IND = ones(n);                                    % matrix phase is indicated by integer 1
+phase_IND( (x(:,:,:, 1) <= 0.75*L(1) & x(:,:,:, 1) >= -0.75*L(1)) ...   % rectangular inclusions are indicated by integer 2
+    & ( x(:,:,:, 2) <=  0.75*L(2) & x(:,:,:, 2) >= -0.75*L(2)) ...
+    & ((x(:,:,:, 3) <= -0.50*L(3) & x(:,:,:, 3) >= -0.75*L(3)) ...
+    |  (x(:,:,:, 3) <=  0.75*L(3) & x(:,:,:, 3) >=  0.5*L(3))) ) = 2;
+vol_frac = 0.025;                                       % volume fraction
+radius = (6 * vol_frac * prod(L) / pi)^(1/3);           % RVE volume = 8*L(1)*L(2)*L(3)
+phase_IND(sum(x.^2, ndim + 1) <= radius*radius) = 3;    % circular inclusion is indicated by integer 3
 %% INDEXING MATRICES FOR EFFICIENT STORAGE AND EINSTEIN SUMMATION
 % IND_K4 = Indexing into the symmetric parts of the elastic tangent moduli
 % IND    = Indexing into the 4th-order tensor in the form (1,1,i,j), (2,1,i,j), and so on
@@ -21,35 +50,6 @@ IND = [1,  4,  7,  2,  5,  8,  3,  6,  9;   % (1,1,i,j) -- equivalent to for j =
        6, 27, 37, 14, 32, 38, 21, 36, 39;   % (2,3,i,j)
        9, 30, 42, 17, 35, 44, 24, 39, 45];  % (3,3,i,j)
 IND_G = [1  1; 1  2; 1  3; 2  2; 2  3; 3  3];
-%% REGULAR MESH
-ndim = 3;                       % problem dimension
-L = ones(1,ndim);               % RVE occupies the domain [-L(1), L(1)] x [-L(2), L(2)] x [-L(3), L(3)]
-n = repmat(64, [1, ndim]);      % number of nodes per each direction
-h = prod(2*L./n);               % volume of one element boxing the grid point
-vol = prod(2*L);                % volume of the RVE
-scale = L./pi;                  % for scaling the wave frequ
-x1D = cell(1,ndim);     % one-dimensional coordinates in each direction
-xi1D = cell(1,ndim);    % one-dimensional Fourier frequencies in each direction
-for a = 1:ndim
-    if rem(n(a),2) == 1
-        x1D{a} = scale(a) * (2*pi/n(a)) * (-fix(n(a)/2) : fix(n(a)/2));
-        xi1D{a} = [0 : fix(n(a)/2), -fix(n(a)/2) : -1] / scale(a);
-    else
-        x1D{a} = scale(a) * (2*pi/n(a)) * (-fix(n(a)/2) : fix(n(a)/2)-1);
-        xi1D{a} = [0: fix(n(a)/2)-1, 0, -fix(n(a)/2)+1 : -1] / scale(a);
-    end
-end
-x = zeros([n, ndim]); xi = zeros([n, ndim]);                                    % three-dimensional coordinates (x)
-[x(:,:,:,1), x(:,:,:,2), x(:,:,:,3)] = ndgrid(x1D{1}, x1D{2}, x1D{3});          % and three-dimensional Fourier frequencies (xi)
-[xi(:,:,:,1), xi(:,:,:,2), xi(:,:,:,3)] = ndgrid(xi1D{1}, xi1D{2}, xi1D{3});	
-phase_IND = ones(n);                                    % matrix phase is indicated by integer 1
-phase_IND( (x(:,:,:, 1) <= 0.75*L(1) & x(:,:,:, 1) >= -0.75*L(1)) ...   % rectangular inclusions are indicated by integer 2
-    & ( x(:,:,:, 2) <=  0.75*L(2) & x(:,:,:, 2) >= -0.75*L(2)) ...
-    & ((x(:,:,:, 3) <= -0.50*L(3) & x(:,:,:, 3) >= -0.75*L(3)) ...
-    |  (x(:,:,:, 3) <=  0.75*L(3) & x(:,:,:, 3) >=  0.5*L(3))) ) = 2;
-vol_frac = 0.025;                                       % volume fraction
-radius = (6 * vol_frac * prod(L) / pi)^(1/3);           % RVE volume = 8*L(1)*L(2)*L(3)
-phase_IND(sum(x.^2, ndim + 1) <= radius*radius) = 3;    % circular inclusion is indicated by integer 3
 %% MATERIAL LAWS
 nu = [0.33, 0.30, 0.34];                % Poisson ratios for two material phases
 E = [69, 5*69, 20*69];                  % Young moduli for two material phases
@@ -119,10 +119,10 @@ for i = 1:length(IND_K4)
     idx = sub2ind([ndim, ndim], IND_K4(i,3), IND_K4(i,4));  
     SS = squeeze(S(:,:,:,idx));
     idx = sub2ind([ndim, ndim], IND_K4(i,1), IND_K4(i,2));  
-    K4_Macro(i) = h*(sum(K4(:,i)) + sum(K4(:,IND(idx,:)) .* SS(:,:), 'all')) / vol;
+    K4_Macro(i) = h*(sum(K4(:,i)) + sum(K4(:,IND(idx,:)) .* SS(:,:), [1, 2])) / vol;
 end
 toc
-%% HELPER FUNCTIONS
+%% AUXILIARY FUNCTIONS
 function v = residual_func3D(P, G)  % Compute right-hand side for the CG solver
 Phat = zeros(size(P)); ndim = 3;
 for i = 1:ndim*ndim

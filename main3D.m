@@ -4,7 +4,7 @@ L = ones(1,ndim);               % RVE occupies the domain [-L(1), L(1)] x [-L(2)
 n = repmat(64, [1, ndim]);      % number of nodes per each direction
 h = prod(2*L./n);               % volume of one element boxing the grid point
 vol = prod(2*L);                % volume of the RVE
-scale = L./pi;  % for scaling the wave frequ
+scale = L./pi;                  % for scaling the wave frequencies
 x1D = cell(1,ndim);     % one-dimensional coordinates in each direction
 xi1D = cell(1,ndim);    % one-dimensional Fourier frequencies in each direction
 for a = 1:ndim
@@ -119,10 +119,10 @@ for i = 1:length(IND_K4)
     idx = sub2ind([ndim, ndim], IND_K4(i,3), IND_K4(i,4));  
     SS = squeeze(S(:,:,:,idx));
     idx = sub2ind([ndim, ndim], IND_K4(i,1), IND_K4(i,2));  
-    K4_Macro(i) = h*(sum(K4(:,i)) + sum(K4(:,IND(idx,:)) .* SS(:,:), 'all')) / vol;
+    K4_Macro(i) = h*(sum(K4(:,i)) + sum(K4(:,IND(idx,:)) .* SS(:,:), [1, 2])) / vol;
 end
 toc
-%% HELPER FUNCTIONS
+%% AUXILIARY FUNCTIONS
 function v = residual_func3D(P, G)  % Compute right-hand side for the CG solver
 Phat = zeros(size(P)); ndim = 3;
 for i = 1:ndim*ndim
