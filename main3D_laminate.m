@@ -109,7 +109,7 @@ K4_Macro = zeros(1, length(IND_K4));
 for i = 1:length(IND_K4)
     idx = sub2ind([ndim, ndim], IND_K4(i,3), IND_K4(i,4));  SS = squeeze(S(:,:,:,idx));
     idx = sub2ind([ndim, ndim], IND_K4(i,1), IND_K4(i,2));
-    K4_Macro(i) = h*(sum(K4(:,i)) + sum(K4(:,IND(idx,:)) .* SS(:,:), 'all')) / vol;
+    K4_Macro(i) = h*(sum(K4(:,i)) + sum(K4(:,IND(idx,:)) .* SS(:,:), [1, 2])) / vol;
 end
 
 %% FIGURE: LAMINATE RVE
@@ -175,7 +175,7 @@ xlim([0, 46])
 if exist('./figures', 'dir') ~= 7, mkdir 'figures'; end
 exportgraphics(gcf, './figures/tangent_moduli_comparison.eps', 'ContentType', 'image');
 
-%% HELPER FUNCTIONS
+%% AUXILIARY FUNCTIONS
 function v = residual_func3D(P, G)  % Compute right-hand side for the CG solver
 Phat = zeros(size(P)); ndim = 3;
 for i = 1:ndim*ndim, Phat(:,:,:,i) = fftn(P(:,:,:,i)); end
